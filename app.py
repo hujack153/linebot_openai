@@ -8,6 +8,8 @@ from linebot.exceptions import (
 )
 from linebot.models import *
 
+from linebot.models import TemplateSendMessage, ButtonsTemplate, MessageAction
+
 #======python的函數庫==========
 import tempfile, os
 import datetime
@@ -50,19 +52,33 @@ def callback():
         abort(400)
     return 'OK'
 
-
 # 處理訊息
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     msg = event.message.text
-    try:
-        GPT_answer = GPT_response(msg)
-        print(GPT_answer)
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
-    except:
-        print(traceback.format_exc())
-        line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
-        
+    if msg == "按鈕":
+        buttons_template = TemplateSendMessage(
+            alt_text='按鈕樣板',
+            template=ButtonsTemplate(
+                title='選擇動作',
+                text='請選擇一個選項：',
+                actions=[
+                    MessageAction(label='選項1', text='你選擇了選項1'),
+                    MessageAction(label='選項2', text='你選擇了選項2'),
+                ]
+            )
+        )
+        line_bot_api.reply_message(event.reply_token, buttons_template)
+    else:
+        try:
+            GPT_answer = GPT_response(msg)
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
+        except:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息')
+            )
+
 
 @handler.add(PostbackEvent)
 def handle_message(event):
