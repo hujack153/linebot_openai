@@ -9,7 +9,7 @@ import traceback
 import openai
 
 app = Flask(__name__)
-app.secret_key = ''f9b9f8f1d2e3a4c5b6c7d8e9f0a1b2c3'
+app.secret_key = 'f9b9f8f1d2e3a4c5b6c7d8e9f0a1b2c3'
 
 # 使用 Flask-Session
 app.config['SESSION_TYPE'] = 'filesystem'
