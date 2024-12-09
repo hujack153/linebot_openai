@@ -60,15 +60,21 @@ def handle_message(event):
     user_id = event.source.user_id
     msg = event.message.text
 
-    if msg.lower() == "偏好" and user_id in session:
-        # 回覆儲存的偏好
-        previous_choice = session[user_id]
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=f"你之前的偏好是：{previous_choice}")
-        )
+    # 如果使用者輸入 "偏好"，檢查 Session 是否有資料
+    if msg.lower() == "偏好":
+        if user_id in session:
+            previous_choice = session[user_id]  # 從 Session 獲取偏好
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=f"你之前的偏好是：{previous_choice}")
+            )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="你尚未設定任何偏好，請輸入「開始」來選擇你的偏好。")
+            )
     elif msg.lower() == "開始" or msg.lower() == "重新選擇":
-        # 顯示選擇偏好的按鈕
+        # 顯示偏好選擇的按鈕
         buttons_template = TemplateSendMessage(
             alt_text='選擇偏好',
             template=ButtonsTemplate(
