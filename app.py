@@ -31,7 +31,7 @@ def GPT_response(text):
         model="gpt-3.5-turbo-instruct",
         prompt=text,
         temperature=0.5,
-        max_tokens=500
+        max_tokens=200
     )
     print(response)
     answer = response['choices'][0]['text'].replace('。', '')
