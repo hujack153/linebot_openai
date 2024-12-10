@@ -53,25 +53,42 @@ base_prompt = """
 """
 
 def GPT_response(mood, weather, chocolate, fruit_acidity):
-    # 使用 OpenAI API 生成回應
-    prompt = base_prompt.format(
-        cocktail1_name=cocktails[0]["name"], cocktail1_desc=cocktails[0]["description"],
-        cocktail2_name=cocktails[1]["name"], cocktail2_desc=cocktails[1]["description"],
-        cocktail3_name=cocktails[2]["name"], cocktail3_desc=cocktails[2]["description"],
-        mood=mood,
-        weather=weather,
-        chocolate=chocolate,
-        fruit_acidity=fruit_acidity
-    )
-    response = openai.Completion.create(
-        model="gpt-4",
-        prompt=prompt,
-        temperature=0.7,
-        max_tokens=300
-    )
-    print(response)
-    answer = response['choices'][0]['text'].strip()
-    return answer
+    try:
+        # 構造 Prompt
+        prompt = base_prompt.format(
+            cocktail1_name=cocktails[0]["name"], cocktail1_desc=cocktails[0]["description"],
+            cocktail2_name=cocktails[1]["name"], cocktail2_desc=cocktails[1]["description"],
+            cocktail3_name=cocktails[2]["name"], cocktail3_desc=cocktails[2]["description"],
+            mood=mood,
+            weather=weather,
+            chocolate=chocolate,
+            fruit_acidity=fruit_acidity
+        )
+        # 呼叫 OpenAI API
+        response = openai.Completion.create(
+            model="gpt-4o",
+            prompt=prompt,
+            temperature=0.7,
+            max_tokens=300
+        )
+        # 檢查回應格式
+        if 'choices' not in response or not response['choices']:
+            raise ValueError("Invalid response format from OpenAI API")
+        answer = response['choices'][0]['text'].strip()
+        return answer
+    except openai.error.AuthenticationError:
+        print("Authentication error: Check your API Key")
+        return "無法驗證 API Key，請檢查設定。"
+    except openai.error.RateLimitError:
+        print("Rate limit exceeded: Too many requests")
+        return "超出請求限制，請稍後再試。"
+    except openai.error.OpenAIError as e:
+        print(f"OpenAI API error: {e}")
+        return "OpenAI API 無法處理請求，請稍後再試。"
+    except Exception as e:
+        print(f"其他錯誤：{e}")
+        return "發生未知錯誤，請稍後再試。"
+
 
 
 @app.route("/callback", methods=['POST'])
