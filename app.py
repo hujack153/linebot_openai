@@ -17,16 +17,60 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OpenAI API Key 初始化設定
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-def GPT_response(text):
+# 儲存使用者回答的資料
+user_preferences = {}
+
+# 固定的調酒選項
+cocktails = [
+    {
+        "name": "莫吉托（Mojito）",
+        "description": "清新的薄荷和青檸風味，帶有微甜，非常適合晴朗的天氣和愉快的心情。"
+    },
+    {
+        "name": "琴費士（Gin Fizz）",
+        "description": "琴酒、檸檬汁和蘇打水帶來微酸清爽的風味，適合陰天和平靜的心情。"
+    },
+    {
+        "name": "白蘭地亞歷山大（Brandy Alexander）",
+        "description": "柔和的白蘭地和奶香甜味，適合雨天或低落的心情，給人溫暖的感覺。"
+    }
+]
+
+# ChatGPT Prompt
+base_prompt = """
+你是一位調酒專家，根據使用者的回答從以下三款調酒中推薦一款最適合的飲品，並解釋原因：
+1. {cocktail1_name}: {cocktail1_desc}
+2. {cocktail2_name}: {cocktail2_desc}
+3. {cocktail3_name}: {cocktail3_desc}
+
+使用者的回答：
+- 心情：{mood}
+- 天氣：{weather}
+- 喜歡的巧克力：{chocolate}
+- 喜歡的水果酸度：{fruit_acidity}
+
+請選擇一款調酒，並以專業和親切的語氣給出推薦理由。
+"""
+
+def GPT_response(mood, weather, chocolate, fruit_acidity):
     # 使用 OpenAI API 生成回應
+    prompt = base_prompt.format(
+        cocktail1_name=cocktails[0]["name"], cocktail1_desc=cocktails[0]["description"],
+        cocktail2_name=cocktails[1]["name"], cocktail2_desc=cocktails[1]["description"],
+        cocktail3_name=cocktails[2]["name"], cocktail3_desc=cocktails[2]["description"],
+        mood=mood,
+        weather=weather,
+        chocolate=chocolate,
+        fruit_acidity=fruit_acidity
+    )
     response = openai.Completion.create(
-        model="gpt-3.5-turbo-instruct",
-        prompt=text,
-        temperature=0.5,
-        max_tokens=200
+        model="gpt-4",
+        prompt=prompt,
+        temperature=0.7,
+        max_tokens=300
     )
     print(response)
-    answer = response['choices'][0]['text'].replace('。', '')
+    answer = response['choices'][0]['text'].strip()
     return answer
 
 
@@ -44,64 +88,104 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    user_id = event.source.user_id
     msg = event.message.text
 
-    # 問使用者「酒感」或「酸甜」
+    # 問「今天的心情如何？」
     if msg.lower() == "開始" or msg.lower() == "重新選擇":
         buttons_template = TemplateSendMessage(
-            alt_text='選擇偏好',
+            alt_text='今天心情如何？',
             template=ButtonsTemplate(
-                title='你的調酒偏好',
-                text='請選擇你喜歡的口感：',
+                title='你好！今天的心情如何？',
+                text='請選擇最貼近你現在心情的選項～',
                 actions=[
-                    MessageAction(label='酒感', text='酒感'),
-                    MessageAction(label='酸甜', text='酸甜')
+                    MessageAction(label='開心', text='開心'),
+                    MessageAction(label='平常心', text='平常心'),
+                    MessageAction(label='難過', text='難過'),
+                    MessageAction(label='生氣', text='生氣')
                 ]
             )
         )
         line_bot_api.reply_message(event.reply_token, buttons_template)
 
-    # 如果使用者選擇「酒感」，則詢問下一個問題
-    elif msg == "酒感":
+    # 心情選擇
+    elif msg in ["開心", "平常心", "難過", "生氣"]:
+        user_preferences[user_id] = {"mood": msg}
         buttons_template = TemplateSendMessage(
-            alt_text='選擇酒感偏好',
+            alt_text='天氣如何？',
             template=ButtonsTemplate(
-                title='你的酒感偏好',
-                text='請選擇你喜歡的口感：',
+                title='今天天氣如何呢？',
+                text='告訴我今天的天氣吧～',
                 actions=[
-                    MessageAction(label='苦甜', text='苦甜'),
-                    MessageAction(label='不甜', text='不甜')
+                    MessageAction(label='晴天', text='晴天'),
+                    MessageAction(label='雨天', text='雨天'),
+                    MessageAction(label='陰天', text='陰天')
                 ]
             )
         )
         line_bot_api.reply_message(event.reply_token, buttons_template)
 
-    # 如果使用者選擇「酸甜」，則詢問下一個問題
-    elif msg == "酸甜":
+    # 天氣選擇
+    elif msg in ["晴天", "雨天", "陰天"]:
+        user_preferences[user_id]["weather"] = msg
         buttons_template = TemplateSendMessage(
-            alt_text='選擇酸甜偏好',
+            alt_text='你喜歡哪種巧克力？',
             template=ButtonsTemplate(
-                title='你的酸甜偏好',
-                text='請選擇你喜歡的口感：',
+                title='你對巧克力的選擇是？',
+                text='請選擇你最喜歡的巧克力～',
                 actions=[
-                    MessageAction(label='清爽草本', text='清爽草本'),
-                    MessageAction(label='溫潤木質', text='溫潤木質')
+                    MessageAction(label='黑巧克力', text='黑巧克力'),
+                    MessageAction(label='牛奶巧克力', text='牛奶巧克力'),
+                    MessageAction(label='白巧克力(較甜)', text='白巧克力(較甜)')
                 ]
             )
         )
         line_bot_api.reply_message(event.reply_token, buttons_template)
 
-    # 如果使用者回答其他問題，呼叫 OpenAI API 回應
-    else:
+    # 巧克力選擇
+    elif msg in ["黑巧克力", "牛奶巧克力", "白巧克力(較甜)"]:
+        user_preferences[user_id]["chocolate"] = msg
+        buttons_template = TemplateSendMessage(
+            alt_text='你喜歡哪種水果的酸度？',
+            template=ButtonsTemplate(
+                title='你對水果酸度的偏好是？',
+                text='選擇你最喜歡的水果酸度吧！',
+                actions=[
+                    MessageAction(label='檸檬', text='檸檬'),
+                    MessageAction(label='橘子', text='橘子'),
+                    MessageAction(label='草莓(微酸)', text='草莓(微酸)')
+                ]
+            )
+        )
+        line_bot_api.reply_message(event.reply_token, buttons_template)
+
+    # 水果酸度選擇
+    elif msg in ["檸檬", "橘子", "草莓(微酸)"]:
+        user_preferences[user_id]["fruit_acidity"] = msg
+        preferences = user_preferences[user_id]
+
+        # 呼叫 GPT 生成推薦
         try:
-            GPT_answer = GPT_response(msg)
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
+            recommendation = GPT_response(
+                mood=preferences["mood"],
+                weather=preferences["weather"],
+                chocolate=preferences["chocolate"],
+                fruit_acidity=preferences["fruit_acidity"]
+            )
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(recommendation))
         except Exception as e:
             print(traceback.format_exc())
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage('你所使用的 OPENAI API key 額度可能已經超過，請於後台 Log 內確認錯誤訊息')
+                TextSendMessage('生成推薦時發生錯誤，請稍後再試。')
             )
+    
+    # 如果訊息不符合邏輯，提示重新開始
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage('請輸入「開始」來選擇你的偏好。')
+        )
 
 
 if __name__ == "__main__":
