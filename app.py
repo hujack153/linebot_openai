@@ -64,17 +64,19 @@ def GPT_response(mood, weather, chocolate, fruit_acidity):
             chocolate=chocolate,
             fruit_acidity=fruit_acidity
         )
-        # 呼叫 OpenAI API
+
+        # 使用 ChatCompletion，正確傳遞 messages
         response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            prompt=prompt,
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "你是一位調酒專家，會根據使用者的偏好推薦最適合的飲品。"},
+                {"role": "user", "content": prompt}
+            ],
             temperature=0.7,
             max_tokens=300
         )
-        # 檢查回應格式
-        if 'choices' not in response or not response['choices']:
-            raise ValueError("Invalid response format from OpenAI API")
-        answer = response['choices'][0]['text'].strip()
+        # 解析回應
+        answer = response['choices'][0]['message']['content'].strip()
         return answer
     except openai.error.AuthenticationError:
         print("Authentication error: Check your API Key")
