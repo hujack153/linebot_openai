@@ -65,7 +65,7 @@ def GPT_response(mood, weather, chocolate, fruit_acidity):
             fruit_acidity=fruit_acidity
         )
         # 呼叫 OpenAI API
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4o",
             prompt=prompt,
             temperature=0.7,
