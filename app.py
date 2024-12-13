@@ -91,8 +91,6 @@ def GPT_response(mood, weather, chocolate, fruit_acidity):
         print(f"其他錯誤：{e}")
         return "發生未知錯誤，請稍後再試。"
 
-
-
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -104,11 +102,26 @@ def callback():
         abort(400)
     return 'OK'
 
-
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
     msg = event.message.text
+
+    # 提取偏好紀錄
+    if msg.lower() == "偏好紀錄":
+        if user_id in user_preferences and user_preferences[user_id]:
+            preferences = user_preferences[user_id]
+            preferences_text = "\n".join([f"{key}: {value}" for key, value in preferences.items()])
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=f"你的偏好紀錄如下：\n{preferences_text}")
+            )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="目前尚未有任何偏好紀錄，請輸入「開始」來選擇你的偏好！")
+            )
+        return
 
     # 問「今天的心情如何？」
     if msg.lower() == "開始" or msg.lower() == "重新選擇":
@@ -198,15 +211,12 @@ def handle_message(event):
                 event.reply_token,
                 TextSendMessage('生成推薦時發生錯誤，請稍後再試。')
             )
-    
     # 如果訊息不符合邏輯，提示重新開始
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage('請輸入「開始」來選擇你的偏好。')
+            TextSendMessage('請輸入「開始」以重新選擇你的偏好！')
         )
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run()
